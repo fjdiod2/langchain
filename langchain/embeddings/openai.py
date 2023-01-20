@@ -1,5 +1,5 @@
 """Wrapper around OpenAI embedding models."""
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 from pydantic import BaseModel, Extra, root_validator
 
@@ -25,6 +25,7 @@ class OpenAIEmbeddings(BaseModel, Embeddings):
     document_model_name: str = "text-embedding-ada-002"
     query_model_name: str = "text-embedding-ada-002"
     openai_api_key: Optional[str] = None
+    embed_callback: Optional[Callable] = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -84,10 +85,12 @@ class OpenAIEmbeddings(BaseModel, Embeddings):
         Returns:
             List of embeddings, one for each text.
         """
-        responses = [
-            self._embedding_func(text, engine=self.document_model_name)
-            for text in texts
-        ]
+        responses = []
+        total = len(texts)
+        for i, text in enumerate(texts):
+            responses.append(self._embedding_func(text, engine=self.document_model_name))
+            if self.embed_callback is not None:
+                self.embed_callback(i, total)
         return responses
 
     def embed_query(self, text: str) -> List[float]:
